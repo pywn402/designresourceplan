@@ -3,7 +3,7 @@ import './App.css'
 
 // ─── Password ────────────────────────────────────────────────────────────────
 
-const ACCESS_PASSWORD = 'design2025'
+const ACCESS_PASSWORD = '2026ibm'
 
 function LoginGate({ onUnlock }) {
   const [input, setInput] = useState('')
