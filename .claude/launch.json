@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "design-estimator",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [".claude/start.sh"],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}
