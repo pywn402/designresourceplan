@@ -54,7 +54,7 @@ const ADDONS = [
   { id: 'uikit',   label: 'UI Kit 基礎制定｜共用元件盤點', sublabel: '建立共用元件庫與設計基礎規則', minH: 40, maxH: 40, defaultH: 40, required: true },
   { id: 'visual',  label: '視覺風格提案',  sublabel: '以關鍵頁面製作 2 版視覺風格提案',  minH: 80, maxH: 80, defaultH: 80 },
   { id: 'spec',    label: '設計規範產出',  sublabel: '輸出可交付開發的設計規格文件',    minH: 40, maxH: 40, defaultH: 40 },
-  { id: 'appicon', label: 'App Icon',      sublabel: '主圖示設計（含各平台尺寸輸出）', minH: 40, maxH: 40, defaultH: 40 },
+  { id: 'appicon', label: 'App Icon',      sublabel: '產出 >3 版選擇，包含來回微調', minH: 40, maxH: 40, defaultH: 40 },
   { id: 'splash',  label: 'Splash & Loading', sublabel: '啟動畫面與載入動畫',         minH: 40, maxH: 40, defaultH: 40 },
   { id: 'source',  label: '提供原始檔',   sublabel: '交付可編輯的設計原始檔',         dynamic: true },
 ]
