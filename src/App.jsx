@@ -44,41 +44,39 @@ function LoginGate({ onUnlock }) {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const FEATURE_TYPES = [
-  { id: 'overview',    label: '總覽類', sublabel: 'Overview / Dashboard', hours: 40 },
-  { id: 'transaction', label: '交易類', sublabel: 'Transaction',          hours: 28 },
-  { id: 'query',       label: '查詢類', sublabel: 'Query',                hours: 16 },
-  { id: 'setting',     label: '設定類', sublabel: 'Setting',              hours: 14 },
-]
-
-// 每批次的固定成本項目（小時為每批次）
-const BATCH_COSTS = [
-  { id: 'sa',   label: 'SA 會議',     note: '至少 2 場，含會前準備與會後整理，一場至少 4hr', minH: 8, maxH: 10, defaultH: 10 },
-  { id: 'client', label: '客戶會議', note: '至少 2 場，含會議紀錄整理，一場至少 3hr',       minH: 6, maxH: 8,  defaultH: 8  },
-  { id: 'disc', label: '內部設計討論', note: '含查詢與交易類功能討論',                       minH: 6, maxH: 8,  defaultH: 8  },
+  { id: 'overview',    label: '總覽類', sublabel: 'Overview / Dashboard', hours: 64, noTier: true },
+  { id: 'transaction', label: '交易類', sublabel: 'Transaction',          hours: 40 },
+  { id: 'query',       label: '查詢類', sublabel: 'Query',                hours: 28 },
+  { id: 'setting',     label: '設定類', sublabel: 'Setting',              hours: 18 },
 ]
 
 const ADDONS = [
-  { id: 'uikit',  label: 'UI Kit 基礎制定｜共用元件盤點', sublabel: 'UI Kit & Component Inventory', minH: 48, maxH: 48, defaultH: 48, required: true },
-  { id: 'visual', label: '視覺風格設計', sublabel: 'Visual Style Design', minH: 40, maxH: 56, defaultH: 48 },
-  { id: 'spec',   label: '設計規範產出', sublabel: 'Design Specification', minH: 40, maxH: 40, defaultH: 40 },
-  { id: 'source', label: '提供原始檔',  sublabel: 'Source File Delivery',  dynamic: true },
+  { id: 'uikit',   label: 'UI Kit 基礎制定｜共用元件盤點', sublabel: '建立共用元件庫與設計基礎規則', minH: 40, maxH: 40, defaultH: 40, required: true },
+  { id: 'visual',  label: '視覺風格提案',  sublabel: '以關鍵頁面製作 2 版視覺風格提案',  minH: 80, maxH: 80, defaultH: 80 },
+  { id: 'spec',    label: '設計規範產出',  sublabel: '輸出可交付開發的設計規格文件',    minH: 40, maxH: 40, defaultH: 40 },
+  { id: 'appicon', label: 'App Icon',      sublabel: '主圖示設計（含各平台尺寸輸出）', minH: 40, maxH: 40, defaultH: 40 },
+  { id: 'splash',  label: 'Splash & Loading', sublabel: '啟動畫面與載入動畫',         minH: 40, maxH: 40, defaultH: 40 },
+  { id: 'source',  label: '提供原始檔',   sublabel: '交付可編輯的設計原始檔',         dynamic: true },
 ]
 
 const DIRECTOR_PRESETS = {
-  high:   { label: '高涉入', desc: '工期 × 75%，完整月 80h／不足月 40h', factor: 0.75, fullH: 80, partialH: 40 },
-  medium: { label: '中涉入', desc: '工期 × 50%，完整月 60h／不足月 40h', factor: 0.50, fullH: 60, partialH: 40 },
-  low:    { label: '低涉入', desc: '工期 × 50%，完整月 40h／不足月 20h', factor: 0.50, fullH: 40, partialH: 20 },
+  high:   { label: '高涉入', desc: '涉入工期 2/3 月份，尾月起 20→40→60→80h', factor: 2/3 },
+  medium: { label: '中涉入', desc: '涉入工期 1/2 月份，尾月起 20→40→60→80h', factor: 1/2 },
+  low:    { label: '低涉入', desc: '涉入工期 1/3 月份，尾月起 20→40→60→80h', factor: 1/3 },
 }
+
+const DIR_RAMP = [20, 40, 60, 80]
 
 function computeDirPattern(months, level) {
   if (!months) return []
-  const { factor, fullH, partialH } = DIRECTOR_PRESETS[level]
-  const total    = months * factor
-  const fullMths = Math.floor(total)
-  const hasPartial = total % 1 > 0
-  return Array.from({ length: months }, (_, i) =>
-    i < fullMths ? fullH : (i === fullMths && hasPartial) ? partialH : 0
-  )
+  const { factor } = DIRECTOR_PRESETS[level]
+  const involvedMonths = Math.round(months * factor)
+  // 涉入的是前 N 個月，從第 N 月往回填 20, 40, 60, 80；超過 4 個月繼續填 80
+  return Array.from({ length: months }, (_, i) => {
+    if (i >= involvedMonths) return 0
+    const fromInvolvedEnd = involvedMonths - 1 - i  // 0 = 最後涉入月
+    return fromInvolvedEnd < DIR_RAMP.length ? DIR_RAMP[fromInvolvedEnd] : 80
+  })
 }
 
 const DESIGNER_LEVELS = [
@@ -97,6 +95,15 @@ const HOURS_PER_MONTH = 160
 
 function fmt(h) { return `${Math.round(h).toLocaleString()} h` }
 function money(n) { return `NT$ ${Math.round(n).toLocaleString()}` }
+
+function calcTiered(count, hoursPerUnit) {
+  if (count === 0) return { t1: 0, t2: 0, t3: 0, total: 0 }
+  const t1 = Math.ceil(count / 3)
+  const t2 = Math.ceil((count - t1) / 2)
+  const t3 = count - t1 - t2
+  const total = Math.round(t1 * hoursPerUnit + t2 * hoursPerUnit * 0.66 + t3 * hoursPerUnit * 0.33)
+  return { t1, t2, t3, total }
+}
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -139,6 +146,26 @@ function Tag({ hours, active }) {
   return <span className={`tag ${active ? 'tag-active' : ''}`}>{fmt(hours)}</span>
 }
 
+function InfoBtn({ onClick }) {
+  return (
+    <button className="info-btn" onClick={onClick}>計算說明</button>
+  )
+}
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 className="modal-title">{title}</h3>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">{children}</div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main App ────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -149,17 +176,13 @@ export default function App() {
 
 function Estimator() {
   const [features, setFeatures] = useState({ overview: 0, transaction: 0, query: 0, setting: 0 })
-  const [addons, setAddons] = useState({ uikit: true, visual: false, spec: false, source: false })
+  const [addons, setAddons] = useState({ uikit: true, visual: false, spec: false, appicon: false, splash: false, source: false })
   const [addonHours, setAddonHours] = useState(
     Object.fromEntries(ADDONS.map(a => [a.id, a.defaultH]))
   )
-  const [batches, setBatches] = useState(1)
-  const [batchHours, setBatchHours] = useState(
-    Object.fromEntries(BATCH_COSTS.map(b => [b.id, b.defaultH]))
-  )
-
   const [directorLevel, setDirectorLevel] = useState('medium')
-  const [showDirector, setShowDirector] = useState(true)
+  const showDirector = true
+  const [openModal, setOpenModal] = useState(null)
   // 人力配置
   const [b7Count,  setB7Count]  = useState(1)
   const [b6Count,  setB6Count]  = useState(1)
@@ -171,16 +194,14 @@ function Estimator() {
 
   // Calculations
   const txCount   = useMemo(() => FEATURE_TYPES.reduce((s, f) => s + features[f.id], 0), [features])
-  const txHours   = useMemo(() => FEATURE_TYPES.reduce((s, f) => s + features[f.id] * f.hours, 0), [features])
-  const perBatchH = useMemo(() => BATCH_COSTS.reduce((s, b) => s + batchHours[b.id], 0), [batchHours])
-  const fixHours  = perBatchH * batches
+  const txHours   = useMemo(() => FEATURE_TYPES.reduce((s, f) => s + (f.noTier ? features[f.id] * f.hours : calcTiered(features[f.id], f.hours).total), 0), [features])
   const sourceH   = Math.round(txHours * 1.5)
   const addHours  = useMemo(() => ADDONS.reduce((s, a) => {
     if (!addons[a.id]) return s
     return s + (a.dynamic ? sourceH : addonHours[a.id])
   }, 0), [addons, addonHours, sourceH])
-  const totalH    = txHours + fixHours + addHours
-  const bufferedH = Math.round(totalH * 1.1)
+  const totalH    = txHours + addHours
+  const bufferedH = totalH
 
   // 人頭清單（由 ⑥ 人數衍生）
   const designerList = useMemo(() => [
@@ -211,9 +232,43 @@ function Estimator() {
   const activeMonths    = Math.max(1, estimatedMonths)
   const dirPat = useMemo(() => computeDirPattern(estimatedMonths, directorLevel), [estimatedMonths, directorLevel])
 
+  // 預設分配：B7 優先填 160h，剩餘才給 B6，不超過總工時
+  const defaultAlloc = useMemo(() => {
+    let remaining = totalH
+    const subActiveMonths = Math.round(activeMonths * 2 / 3)
+    const result = {}
+    const subList = designerList.filter(d => d.key.startsWith('sub-'))
+    const mainList = designerList.filter(d => !d.key.startsWith('sub-'))
+
+    // 1. 先填 Sub（前 2/3 工期，每月 80h）
+    for (const d of subList) {
+      const months = Array(activeMonths).fill(0)
+      for (let m = 0; m < subActiveMonths; m++) {
+        const h = Math.min(80, Math.max(0, remaining))
+        months[m] = h
+        remaining -= h
+      }
+      result[d.key] = months
+    }
+
+    // 2. 再填 B7、B6（每月 160h，B7 優先）
+    for (const d of mainList) {
+      const months = Array(activeMonths).fill(0)
+      for (let m = 0; m < activeMonths; m++) {
+        const h = Math.min(160, Math.max(0, remaining))
+        months[m] = h
+        remaining -= h
+      }
+      result[d.key] = months
+    }
+
+    return result
+  }, [designerList, totalH, activeMonths])
+
   const getH = (key) => {
-    const arr = allocData[key] || []
-    return Array.from({ length: activeMonths }, (_, i) => arr[i] || 0)
+    const arr = allocData[key]
+    if (!arr) return defaultAlloc[key] || Array(activeMonths).fill(0)
+    return Array.from({ length: activeMonths }, (_, i) => i < arr.length ? arr[i] : (defaultAlloc[key]?.[i] ?? 0))
   }
 
   // 月度手動分配計算（依賴 dirPat，需在後面）
@@ -240,7 +295,7 @@ function Estimator() {
     const v = Math.max(0, Math.min(HOURS_PER_MONTH, Number(val) || 0))
     setAllocData(prev => ({
       ...prev,
-      [key]: Array.from({ length: activeMonths }, (_, i) => i === month ? v : (prev[key]?.[i] || 0)),
+      [key]: Array.from({ length: activeMonths }, (_, i) => i === month ? v : (prev[key]?.[i] ?? (defaultAlloc[key]?.[i] ?? 0))),
     }))
   }
   function autoDistribute() {
@@ -253,89 +308,76 @@ function Estimator() {
   function clearAllocation() { setAllocData({}) }
   const monthlyDesCost  = b7MonthlyH * DESIGNER_LEVELS[0].rate + b6MonthlyH * DESIGNER_LEVELS[1].rate
 
+  function resetAll() {
+    setFeatures({ overview: 0, transaction: 0, query: 0, setting: 0 })
+    setAddons({ uikit: true, visual: false, spec: false, appicon: false, splash: false, source: false })
+    setAddonHours(Object.fromEntries(ADDONS.map(a => [a.id, a.defaultH])))
+    setDirectorLevel('medium')
+    setB7Count(1)
+    setB6Count(1)
+    setSubCount(0)
+    setSubWeeklyH(20)
+    setAllocData({})
+  }
+
 
   return (
     <div className="app">
       <header className="app-header">
         <h1>設計資源估算工具</h1>
         <p>Design Resource Estimator · 適用於 PM / 業務估案</p>
+        <button className="reset-btn" onClick={resetAll}>一鍵清除</button>
       </header>
 
       {/* ① Feature List */}
-      <Card title="① 功能清單" subtitle="每類功能涵蓋：研究 + 整理競品｜設計執行｜基礎修改（至少 1 輪）。工時固定：總覽類 40h、交易類 28h、查詢類 16h、設定類 14h。">
+      <Card title="① 功能清單" subtitle="涵蓋 SA 內部會議與客戶會議、調整修改、需求訪談、畫面示意提供等 buffer。">
         <div className="row-list">
-          {FEATURE_TYPES.map(f => (
-            <div key={f.id} className="row-item">
-              <div className="row-label">
-                <strong>{f.label}</strong>
-                <span className="muted">{f.sublabel}</span>
+          {FEATURE_TYPES.map(f => {
+            const count = features[f.id]
+            const { t1, t2, t3, total } = f.noTier
+              ? { t1: 0, t2: 0, t3: 0, total: count * f.hours }
+              : calcTiered(count, f.hours)
+            return (
+              <div key={f.id} className="feature-row-wrap">
+                <div className="row-item">
+                  <div className="row-label">
+                    <strong>{f.label}</strong>
+                    <span className="muted">{f.sublabel}</span>
+                  </div>
+                  <div className="row-mid">
+                    <span className="hours-badge">{f.hours} h / 支</span>
+                  </div>
+                  <input
+                    type="number" min="0" step="1"
+                    value={count || ''}
+                    placeholder="0"
+                    onChange={e => setFeatures(p => ({ ...p, [f.id]: Math.max(0, Number(e.target.value) || 0) }))}
+                    className="num-input feature-count-input"
+                  />
+                  <Tag hours={total} active={count > 0} />
+                </div>
+                {count > 0 && !f.noTier && (
+                  <div className="tier-breakdown">
+                    <span>前 {t1} 支 × {f.hours}h</span>
+                    <span className="tier-arrow">→</span>
+                    <span>中 {t2} 支 × {Math.round(f.hours * 0.66)}h</span>
+                    <span className="tier-arrow">→</span>
+                    <span>後 {t3} 支 × {Math.round(f.hours * 0.33)}h</span>
+                  </div>
+                )}
               </div>
-              <div className="row-mid">
-                <span className="hours-badge">{f.hours} h / 支</span>
-              </div>
-              <input
-                type="number" min="0" step="1"
-                value={features[f.id] || ''}
-                placeholder="0"
-                onChange={e => setFeatures(p => ({ ...p, [f.id]: Math.max(0, Number(e.target.value) || 0) }))}
-                className="num-input feature-count-input"
-              />
-              <Tag hours={features[f.id] * f.hours} active={features[f.id] > 0} />
-            </div>
-          ))}
+            )
+          })}
         </div>
         <div className="subtotal">
           <span>功能工時小計 {txCount > 0 && <span className="muted">（共 {txCount} 支）</span>}</span>
+          <InfoBtn onClick={() => setOpenModal('feature-calc')} />
           <Tag hours={txHours} active />
         </div>
       </Card>
 
-      {/* ② Fixed Costs */}
-      <Card title="② 固定成本（依批次計算）" subtitle="每個設計批次包含以下固定會議成本，可調整各項小時數。">
-
-        {/* 批次數輸入 */}
-        <div className="batch-header">
-          <div className="batch-header-left">
-            <span className="batch-label">預計設計批次數</span>
-            <span className="muted small">每批次小計 {perBatchH} h</span>
-          </div>
-          <Stepper value={batches} onChange={v => setBatches(Math.max(1, v))} />
-        </div>
-
-        {/* 每批次項目 */}
-        <div className="row-list" style={{ marginTop: 14 }}>
-          {BATCH_COSTS.map(b => (
-            <div key={b.id} className="row-item">
-              <div className="row-label">
-                <strong>{b.label}</strong>
-                <span className="muted small">{b.note}</span>
-              </div>
-              <div className="batch-range-wrap">
-                <span className="muted small">範圍 {b.minH}–{b.maxH}h</span>
-                <input
-                  type="number"
-                  min={b.minH} max={b.maxH} step={1}
-                  value={batchHours[b.id]}
-                  onChange={e => setBatchHours(p => ({
-                    ...p,
-                    [b.id]: Math.min(b.maxH, Math.max(b.minH, Number(e.target.value)))
-                  }))}
-                  className="num-input"
-                />
-                <span className="muted small">h</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="subtotal">
-          <span>固定成本小計（{batches} 批次 × {perBatchH} h）</span>
-          <Tag hours={fixHours} active />
-        </div>
-      </Card>
-
-      {/* ③ Add-ons */}
-      <Card title="③ 加購選項" subtitle="視專案需求選擇，將增加對應設計工時。">
+      {/* ② Add-ons */}
+      <Card title="② 加購選項" subtitle="視專案需求選擇，將增加對應設計工時。">
         <div className="row-list">
           {ADDONS.map(a => (
             <div key={a.id} className="row-item">
@@ -384,52 +426,44 @@ function Estimator() {
       {/* Hours Summary Banner */}
       <div className="summary-banner">
         <div>
-          <div className="banner-label">設計團隊總工時（含 10% buffer）</div>
+          <div className="banner-label">設計團隊總工時</div>
           <div className="banner-main">{fmt(bufferedH)}</div>
           <div className="banner-sub">
-            基礎 {fmt(totalH)}（功能 {fmt(txHours)} ＋ 固定 {fmt(fixHours)} ＋ 加購 {fmt(addHours)}）× 1.1
+            功能 {fmt(txHours)} ＋ 加購 {fmt(addHours)}
           </div>
         </div>
       </div>
 
 
-      {/* ④ Director */}
-      <Card title="④ 設計總監涉入" subtitle="設計總監費用獨立計算，不佔功能工時配額。">
-        <div className="row-item" style={{ marginBottom: 16 }}>
-          <Toggle checked={showDirector} onChange={setShowDirector} />
-          <strong>B8 設計總監</strong>
-          <div style={{ flex: 1 }} />
-          <span className="rate-fixed">NT$ {DIRECTOR_RATE.toLocaleString()} /h</span>
-        </div>
-
-        {showDirector && (
-          <>
-            <div className="director-grid">
-              {Object.entries(DIRECTOR_PRESETS).map(([key, p]) => (
-                <button
-                  key={key}
-                  className={`director-card ${directorLevel === key ? 'director-card-active' : ''}`}
-                  onClick={() => setDirectorLevel(key)}
-                >
-                  <div className="director-card-title">{p.label}</div>
-                  <div className="director-card-desc">{p.desc}</div>
-                  <div className="director-card-pattern">
-                    完整月 {p.fullH}h · 不足月 {p.partialH}h
-                    {estimatedMonths > 0 && (
-                      <span style={{ display: 'block', marginTop: 3 }}>
-                        ≈ {(estimatedMonths * p.factor).toFixed(1)} 個月涉入
-                      </span>
-                    )}
-                  </div>
-                </button>
-              ))}
+      {/* ③ Director */}
+      <Card title="③ 設計總監涉入" subtitle="設計總監費用獨立計算，不佔功能工時配額。">
+        <div className="director-grid">
+          {Object.entries(DIRECTOR_PRESETS).map(([key, p]) => (
+            <div
+              key={key}
+              className={`director-card ${directorLevel === key ? 'director-card-active' : ''}`}
+              onClick={() => setDirectorLevel(key)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={e => e.key === 'Enter' && setDirectorLevel(key)}
+            >
+              <div className="director-card-title">{p.label}</div>
+              <div className="director-card-pattern">
+                {estimatedMonths > 0
+                  ? `涉入 ${Math.round(estimatedMonths * p.factor)} 個月（共 ${estimatedMonths} 個月）`
+                  : '請先設定人力配置'}
+              </div>
+              <button
+                className="info-btn info-btn-sm"
+                onClick={e => { e.stopPropagation(); setOpenModal(`dir-${key}`) }}
+              >計算說明</button>
             </div>
-          </>
-        )}
+          ))}
+        </div>
       </Card>
 
-      {/* ⑤ 人力配置試算 */}
-      <Card title="⑤ 人力配置試算" subtitle={`每人每天有效工時 6.4h，共需消化 ${fmt(bufferedH)}（含 10% buffer）。`}>
+      {/* ④ 人力配置試算 */}
+      <Card title="④ 人力配置試算" subtitle={`每人每天有效工時 6.4h，共需消化 ${fmt(totalH)}。`}>
 
         {/* 人力輸入 */}
         <div className="team-grid">
@@ -498,7 +532,7 @@ function Estimator() {
             </div>
             <div className="dur-divider">÷</div>
             <div className="dur-item">
-              <div className="dur-label">總工時（含 buffer）</div>
+              <div className="dur-label">總工時</div>
               <div className="dur-value">{fmt(bufferedH)}</div>
             </div>
             <div className="dur-divider">=</div>
@@ -515,10 +549,10 @@ function Estimator() {
         )}
       </Card>
 
-      {/* ⑥ 月度工時分配 */}
+      {/* ⑤ 月度工時分配 */}
       <Card
-        title="⑥ 月度工時分配"
-        subtitle={`依 ⑤ 人力設定產生人員列表，手動填入各月工時，右側即時顯示小計工時與金額。`}
+        title="⑤ 月度工時分配"
+        subtitle={`依 ④ 人力設定產生人員列表，手動填入各月工時，右側即時顯示小計工時與金額。`}
       >
         <div className="alloc-toolbar">
           <button className="btn btn-primary" onClick={autoDistribute}>自動均分</button>
@@ -622,15 +656,68 @@ function Estimator() {
           </div>
           <div className="gt-hours">
             <div>功能工時 {fmt(txHours)}</div>
-            <div>固定成本 {fmt(fixHours)}</div>
             <div>加購 {fmt(addHours)}</div>
-            <div>基礎小計 {fmt(totalH)}</div>
-            <div className="gt-hours-total">含 buffer {fmt(bufferedH)}</div>
+            <div className="gt-hours-total">總計 {fmt(totalH)}</div>
           </div>
         </div>
       </Card>
 
       <p className="footer-note">本工具僅供估算參考，實際費用依合約與專案狀況調整。</p>
+
+      {/* Modals */}
+      {openModal === 'feature-calc' && (
+        <Modal title="功能工時計算說明" onClose={() => setOpenModal(null)}>
+          <p>每類功能工時採<strong>遞減分段</strong>計算，反映重複性功能的效率提升：</p>
+          <table className="modal-table">
+            <thead><tr><th>分段</th><th>佔比</th><th>工時倍率</th></tr></thead>
+            <tbody>
+              <tr><td>前 ⅓ 支</td><td>首批功能</td><td>× 100%</td></tr>
+              <tr><td>中 ⅓ 支</td><td>中段功能</td><td>× 66%</td></tr>
+              <tr><td>後 ⅓ 支</td><td>尾段功能</td><td>× 33%</td></tr>
+            </tbody>
+          </table>
+          <p className="modal-note">總覽類不適用遞減，每支固定 60h。</p>
+          <p className="modal-note">範例：交易類 30 支（36h / 支）<br/>
+            前 10 支 × 36h = 360h<br/>
+            中 10 支 × 24h = 240h<br/>
+            後 10 支 × 12h = 120h<br/>
+            <strong>合計 720h</strong>（vs 平均計算 1,080h）
+          </p>
+        </Modal>
+      )}
+      {['high', 'medium', 'low'].map(key => openModal === `dir-${key}` && (
+        <Modal key={key} title={`設計總監・${DIRECTOR_PRESETS[key].label}說明`} onClose={() => setOpenModal(null)}>
+          <p>{DIRECTOR_PRESETS[key].desc}</p>
+          <p>涉入月份為<strong>工期前段</strong>，從最後涉入月往回填入時數：</p>
+          <table className="modal-table">
+            <thead><tr><th>距涉入結束</th><th>時數</th></tr></thead>
+            <tbody>
+              <tr><td>最後涉入月（M_n）</td><td>20h</td></tr>
+              <tr><td>倒數第 2 月</td><td>40h</td></tr>
+              <tr><td>倒數第 3 月</td><td>60h</td></tr>
+              <tr><td>倒數第 4 月起</td><td>80h</td></tr>
+            </tbody>
+          </table>
+          {estimatedMonths > 0 && (() => {
+            const pat = computeDirPattern(estimatedMonths, key)
+            return (
+              <div className="modal-pattern">
+                <p className="modal-note" style={{ marginBottom: 6 }}>
+                  當前工期 {estimatedMonths} 個月，涉入 {Math.round(estimatedMonths * DIRECTOR_PRESETS[key].factor)} 個月：
+                </p>
+                <div className="modal-month-row">
+                  {pat.map((h, i) => (
+                    <div key={i} className={`modal-month-cell ${h > 0 ? 'active' : ''}`}>
+                      <div className="modal-month-label">M{i + 1}</div>
+                      <div className="modal-month-val">{h > 0 ? `${h}h` : '—'}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+        </Modal>
+      ))}
     </div>
   )
 }

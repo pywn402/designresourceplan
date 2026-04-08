@@ -15,7 +15,14 @@
       "Bash(ssh -o StrictHostKeyChecking=no -T git@github.com)",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git remote:*)",
+      "Bash(git push:*)",
+      "Bash(git rm:*)",
+      "Bash(/opt/homebrew/bin/node -e \"require\\(''''fs''''\\).readFileSync\\(''''src/App.jsx'''',''''utf8''''\\)\")",
+      "Bash(/opt/homebrew/bin/node_modules/.bin/vite build:*)",
+      "Bash(/opt/homebrew/bin/npx vite:*)",
+      "Bash(/opt/homebrew/bin/node node_modules/.bin/vite build)"
     ]
   }
 }
