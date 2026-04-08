@@ -60,9 +60,9 @@ const ADDONS = [
 ]
 
 const DIRECTOR_PRESETS = {
-  high:   { label: '高涉入', desc: '涉入工期 2/3 月份，尾月起 20→40→60→80h', factor: 2/3 },
-  medium: { label: '中涉入', desc: '涉入工期 1/2 月份，尾月起 20→40→60→80h', factor: 1/2 },
-  low:    { label: '低涉入', desc: '涉入工期 1/3 月份，尾月起 20→40→60→80h', factor: 1/3 },
+  high:   { label: '高涉入', ratio: '2/3', desc: '涉入工期前 2/3 時間，時數 80→60→40→20h 遞減', factor: 2/3 },
+  medium: { label: '中涉入', ratio: '1/2', desc: '涉入工期前 1/2 時間，時數 80→60→40→20h 遞減', factor: 1/2 },
+  low:    { label: '低涉入', ratio: '1/3', desc: '涉入工期前 1/3 時間，時數 80→60→40→20h 遞減', factor: 1/3 },
 }
 
 const DIR_RAMP = [20, 40, 60, 80]
@@ -448,15 +448,12 @@ function Estimator() {
               onKeyDown={e => e.key === 'Enter' && setDirectorLevel(key)}
             >
               <div className="director-card-title">{p.label}</div>
+              <div className="director-card-desc muted small">{p.desc}</div>
               <div className="director-card-pattern">
                 {estimatedMonths > 0
                   ? `涉入 ${Math.round(estimatedMonths * p.factor)} 個月（共 ${estimatedMonths} 個月）`
-                  : '請先設定人力配置'}
+                  : '請先設定預估工期'}
               </div>
-              <button
-                className="info-btn info-btn-sm"
-                onClick={e => { e.stopPropagation(); setOpenModal(`dir-${key}`) }}
-              >計算說明</button>
             </div>
           ))}
         </div>
@@ -685,39 +682,6 @@ function Estimator() {
           </p>
         </Modal>
       )}
-      {['high', 'medium', 'low'].map(key => openModal === `dir-${key}` && (
-        <Modal key={key} title={`設計總監・${DIRECTOR_PRESETS[key].label}說明`} onClose={() => setOpenModal(null)}>
-          <p>{DIRECTOR_PRESETS[key].desc}</p>
-          <p>涉入月份為<strong>工期前段</strong>，從最後涉入月往回填入時數：</p>
-          <table className="modal-table">
-            <thead><tr><th>距涉入結束</th><th>時數</th></tr></thead>
-            <tbody>
-              <tr><td>最後涉入月（M_n）</td><td>20h</td></tr>
-              <tr><td>倒數第 2 月</td><td>40h</td></tr>
-              <tr><td>倒數第 3 月</td><td>60h</td></tr>
-              <tr><td>倒數第 4 月起</td><td>80h</td></tr>
-            </tbody>
-          </table>
-          {estimatedMonths > 0 && (() => {
-            const pat = computeDirPattern(estimatedMonths, key)
-            return (
-              <div className="modal-pattern">
-                <p className="modal-note" style={{ marginBottom: 6 }}>
-                  當前工期 {estimatedMonths} 個月，涉入 {Math.round(estimatedMonths * DIRECTOR_PRESETS[key].factor)} 個月：
-                </p>
-                <div className="modal-month-row">
-                  {pat.map((h, i) => (
-                    <div key={i} className={`modal-month-cell ${h > 0 ? 'active' : ''}`}>
-                      <div className="modal-month-label">M{i + 1}</div>
-                      <div className="modal-month-val">{h > 0 ? `${h}h` : '—'}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
-        </Modal>
-      ))}
     </div>
   )
 }

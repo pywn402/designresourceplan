@@ -509,10 +509,12 @@
 }
 .director-card-active .director-card-title { color: #92400e; }
 .director-card-desc {
-  font-size: 0.75rem;
-  color: #8b8fa8;
-  margin-bottom: 8px;
+  font-size: 0.72rem;
+  color: #9da0b8;
+  margin-bottom: 6px;
+  line-height: 1.4;
 }
+.director-card-active .director-card-desc { color: #fbbf24; }
 .director-card-pattern {
   font-size: 0.6875rem;
   font-family: ui-monospace, Consolas, monospace;
